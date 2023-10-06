@@ -1,1 +1,3 @@
 # console-play
+
+get coin
