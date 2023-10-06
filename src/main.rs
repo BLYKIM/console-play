@@ -8,6 +8,11 @@ use termion::raw::IntoRawMode;
 
 const MANUAL_POS: u16 = 23;
 
+struct Position {
+    x: u16,
+    y: u16,
+}
+
 fn main() {
     let stdin = stdin();
     let mut stdout = stdout().into_raw_mode().unwrap();
@@ -22,110 +27,91 @@ fn main() {
     )
     .unwrap();
 
-    let mut x = 2;
-    let mut y = 2;
+    let mut player = Position { x: 2, y: 2 };
     let mut score = 0;
 
     // coin
     let mut rng = rand::thread_rng();
-    let mut target_x: u16 = rng.gen_range(2..20);
-    let mut target_y: u16 = rng.gen_range(2..20);
+    let mut coin = Position {
+        x: rng.gen_range(2..20),
+        y: rng.gen_range(2..20),
+    };
 
-    // Draw the border
-    for i in 1..22 {
-        write!(
-            stdout,
-            "{}#{}#",
-            termion::cursor::Goto(i, 1),
-            termion::cursor::Goto(i, 21)
-        )
-        .unwrap();
-        if i < 20 {
-            write!(
-                stdout,
-                "{}#{}#",
-                termion::cursor::Goto(1, i + 1),
-                termion::cursor::Goto(21, i + 1)
-            )
-            .unwrap();
-        }
-    }
-
-    write!(stdout, "{}o", termion::cursor::Goto(target_x, target_y)).unwrap();
+    draw_border(&mut stdout);
+    draw_coin(&mut stdout, &coin);
 
     let start_time = time::Instant::now();
     let mut coin_time = start_time;
+
     // move character
     for c in stdin.keys() {
-        if time::Instant::now().duration_since(start_time) > time::Duration::from_secs(60) {
+        if time_exceeded(start_time, 60) {
             break;
         }
-        if time::Instant::now().duration_since(coin_time) > time::Duration::from_secs(2) {
+        if time_exceeded(coin_time, 2) {
             coin_time = time::Instant::now();
-            write!(stdout, "{} ", termion::cursor::Goto(target_x, target_y)).unwrap(); // Clear the current coin
+            clear_coin(&mut stdout, &coin);
 
-            target_x = rng.gen_range(2..20);
-            target_y = rng.gen_range(2..20);
-            write!(stdout, "{}o", termion::cursor::Goto(target_x, target_y)).unwrap();
+            coin.x = rng.gen_range(2..20);
+            coin.y = rng.gen_range(2..20);
+            draw_coin(&mut stdout, &coin);
         }
 
-        if x == target_x && y == target_y {
+        if player.x == coin.x && player.y == coin.y {
             score += 1;
             coin_time = time::Instant::now();
 
-            target_x = rng.gen_range(2..20);
-            target_y = rng.gen_range(2..20);
-            write!(stdout, "{}o", termion::cursor::Goto(target_x, target_y)).unwrap();
+            coin.x = rng.gen_range(2..20);
+            coin.y = rng.gen_range(2..20);
+            draw_coin(&mut stdout, &coin);
         } else {
-            write!(stdout, "{} ", termion::cursor::Goto(x, y)).unwrap(); // Clear the current character
+            clear_player(&mut stdout, &player);
         }
+
         match c.unwrap() {
             Key::Char('q') => break,
             Key::Left => {
-                if x > 2 {
-                    x -= 1;
+                if player.x > 2 {
+                    player.x -= 1;
                 }
             }
             Key::Right => {
-                if x < 20 {
-                    x += 1;
+                if player.x < 20 {
+                    player.x += 1;
                 }
             }
             Key::Up => {
-                if y > 2 {
-                    y -= 1;
+                if player.y > 2 {
+                    player.y -= 1;
                 }
             }
             Key::Down => {
-                if y < 20 {
-                    y += 1;
+                if player.y < 20 {
+                    player.y += 1;
                 }
             }
             _ => {}
         }
 
-        if x == target_x && y == target_y {
+        if player.x == coin.x && player.y == coin.y {
             score += 1;
             coin_time = time::Instant::now();
-            target_x = rng.gen_range(2..20);
-            target_y = rng.gen_range(2..20);
-            write!(stdout, "{}o", termion::cursor::Goto(target_x, target_y)).unwrap();
+
+            coin.x = rng.gen_range(2..20);
+            coin.y = rng.gen_range(2..20);
+            draw_coin(&mut stdout, &coin);
         }
 
-        write!(stdout, "{}&", termion::cursor::Goto(x, y)).unwrap(); // Write the '&' character
+        draw_player(&mut stdout, &player);
 
         write!(
             stdout,
-            "{}Score: {score}",
-            termion::cursor::Goto(MANUAL_POS, 5)
+            "{}Score: {}",
+            termion::cursor::Goto(MANUAL_POS, 5),
+            score
         )
         .unwrap();
-        // write!(
-        //     stdout,
-        //     "{}Debug: x:{x}, y:{y}, target_x: {target_x}, target_y: {target_y}",
-        //     termion::cursor::Goto(MANUAL_POS, 5)
-        // )
-        // .unwrap();
+
         stdout.flush().unwrap();
     }
 
@@ -137,4 +123,49 @@ fn main() {
         termion::cursor::Show
     )
     .unwrap();
+}
+
+fn draw_border(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>) {
+    for i in 1..22 {
+        write!(
+            stdout,
+            "{}#{}#",
+            termion::cursor::Goto(i, 1),
+            termion::cursor::Goto(i, 21)
+        )
+        .unwrap();
+
+        if i < 20 {
+            write!(
+                stdout,
+                "{}#{}#",
+                termion::cursor::Goto(1, i + 1),
+                termion::cursor::Goto(21, i + 1)
+            )
+            .unwrap();
+        }
+    }
+}
+
+fn draw_coin(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>, coin: &Position) {
+    write!(stdout, "{}o", termion::cursor::Goto(coin.x, coin.y)).unwrap();
+}
+
+/// Clear the current coin
+fn clear_coin(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>, coin: &Position) {
+    write!(stdout, "{} ", termion::cursor::Goto(coin.x, coin.y)).unwrap();
+}
+
+/// Clear the current character
+fn clear_player(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>, player: &Position) {
+    write!(stdout, "{} ", termion::cursor::Goto(player.x, player.y)).unwrap();
+}
+
+/// Write the '&' character
+fn draw_player(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>, player: &Position) {
+    write!(stdout, "{}&", termion::cursor::Goto(player.x, player.y)).unwrap();
+}
+
+fn time_exceeded(start_time: time::Instant, limit: u64) -> bool {
+    time::Instant::now().duration_since(start_time) > time::Duration::from_secs(limit)
 }
