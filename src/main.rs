@@ -1,171 +1,78 @@
 #![allow(clippy::too_many_lines)]
-use rand::Rng;
-use std::io::{stdin, stdout, Write};
-use std::time;
+
+mod coin;
+
+use std::borrow::BorrowMut;
+use std::io::{stdin, stdout, StdoutLock, Write};
+use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
-use termion::raw::IntoRawMode;
+use termion::raw::{IntoRawMode, RawTerminal};
 
-const MANUAL_POS: u16 = 23;
-
-struct Position {
-    x: u16,
-    y: u16,
-}
+const GAMES: &[&str; 3] = &["coin game", "empty", "empty"];
 
 fn main() {
     let stdin = stdin();
-    let mut stdout = stdout().into_raw_mode().unwrap();
+    let mut stdin_lock = stdin.lock();
 
-    // init
-    write!(
-        stdout,
-        "{}{}q to exit. Use arrow keys to move the character.{}",
-        termion::clear::All,
-        termion::cursor::Goto(MANUAL_POS, 2),
-        termion::cursor::Hide
-    )
-    .unwrap();
+    let mut stdout = stdout().lock().into_raw_mode().unwrap();
 
-    let mut player = Position { x: 2, y: 2 };
-    let mut score = 0;
+    write!(stdout, "{}", termion::cursor::Hide).unwrap();
 
-    // coin
-    let mut rng = rand::thread_rng();
-    let mut coin = Position {
-        x: rng.gen_range(2..20),
-        y: rng.gen_range(2..20),
-    };
+    stdout.flush().unwrap();
 
-    draw_border(&mut stdout);
-    draw_coin(&mut stdout, &coin);
+    let mut selected = 0;
 
-    let start_time = time::Instant::now();
-    let mut coin_time = start_time;
+    show_list(&mut stdout, selected);
 
-    // move character
-    for c in stdin.keys() {
-        if time_exceeded(start_time, 60) {
-            break;
-        }
-        if time_exceeded(coin_time, 2) {
-            coin_time = time::Instant::now();
-            clear_coin(&mut stdout, &coin);
-
-            coin.x = rng.gen_range(2..20);
-            coin.y = rng.gen_range(2..20);
-            draw_coin(&mut stdout, &coin);
-        }
-
-        if player.x == coin.x && player.y == coin.y {
-            score += 1;
-            coin_time = time::Instant::now();
-
-            coin.x = rng.gen_range(2..20);
-            coin.y = rng.gen_range(2..20);
-            draw_coin(&mut stdout, &coin);
-        } else {
-            clear_player(&mut stdout, &player);
-        }
-
+    for c in stdin_lock.borrow_mut().keys() {
         match c.unwrap() {
-            Key::Char('q') => break,
-            Key::Left => {
-                if player.x > 2 {
-                    player.x -= 1;
-                }
-            }
-            Key::Right => {
-                if player.x < 20 {
-                    player.x += 1;
-                }
-            }
             Key::Up => {
-                if player.y > 2 {
-                    player.y -= 1;
+                if selected > 0 {
+                    selected = selected.saturating_sub(1);
                 }
             }
             Key::Down => {
-                if player.y < 20 {
-                    player.y += 1;
+                if selected < GAMES.len() - 1 {
+                    selected += 1;
                 }
             }
-            _ => {}
+            Key::Char('\n') => match GAMES[selected] {
+                "coin game" => {
+                    coin::coin_game(&mut stdin_lock, &mut stdout);
+                    break;
+                }
+                "empty" => break,
+                _ => (),
+            },
+            Key::Char('q') => break,
+            _ => (),
         }
 
-        if player.x == coin.x && player.y == coin.y {
-            score += 1;
-            coin_time = time::Instant::now();
-
-            coin.x = rng.gen_range(2..20);
-            coin.y = rng.gen_range(2..20);
-            draw_coin(&mut stdout, &coin);
-        }
-
-        draw_player(&mut stdout, &player);
-
-        write!(
-            stdout,
-            "{}Score: {}",
-            termion::cursor::Goto(MANUAL_POS, 5),
-            score
-        )
-        .unwrap();
+        show_list(&mut stdout, selected);
 
         stdout.flush().unwrap();
     }
 
+    write!(stdout, "{}", termion::cursor::Show).unwrap();
+}
+
+fn show_list(stdout: &mut RawTerminal<StdoutLock>, selected: usize) {
     write!(
         stdout,
-        "{}Score: {}{}",
+        "{}{}",
         termion::clear::All,
-        score,
-        termion::cursor::Show
+        termion::cursor::Goto(1, 1)
     )
     .unwrap();
-}
 
-fn draw_border(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>) {
-    for i in 1..22 {
-        write!(
-            stdout,
-            "{}#{}#",
-            termion::cursor::Goto(i, 1),
-            termion::cursor::Goto(i, 21)
-        )
-        .unwrap();
-
-        if i < 20 {
-            write!(
-                stdout,
-                "{}#{}#",
-                termion::cursor::Goto(1, i + 1),
-                termion::cursor::Goto(21, i + 1)
-            )
-            .unwrap();
+    for (i, game) in GAMES.iter().enumerate() {
+        if i == selected {
+            writeln!(stdout, "> {game}").unwrap();
+        } else {
+            writeln!(stdout, "  {game}").unwrap();
         }
+        let (_, y) = stdout.cursor_pos().unwrap();
+        write!(stdout, "{}", termion::cursor::Goto(1, y + 1)).unwrap();
     }
-}
-
-fn draw_coin(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>, coin: &Position) {
-    write!(stdout, "{}o", termion::cursor::Goto(coin.x, coin.y)).unwrap();
-}
-
-/// Clear the current coin
-fn clear_coin(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>, coin: &Position) {
-    write!(stdout, "{} ", termion::cursor::Goto(coin.x, coin.y)).unwrap();
-}
-
-/// Clear the current character
-fn clear_player(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>, player: &Position) {
-    write!(stdout, "{} ", termion::cursor::Goto(player.x, player.y)).unwrap();
-}
-
-/// Write the '&' character
-fn draw_player(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>, player: &Position) {
-    write!(stdout, "{}&", termion::cursor::Goto(player.x, player.y)).unwrap();
-}
-
-fn time_exceeded(start_time: time::Instant, limit: u64) -> bool {
-    time::Instant::now().duration_since(start_time) > time::Duration::from_secs(limit)
 }
