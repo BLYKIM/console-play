@@ -27,23 +27,22 @@ impl Randomizer {
     /// Create a new randomizer from a seed.
     pub fn new(seed: u64) -> Randomizer {
         Randomizer {
-            state: seed.wrapping_add(0xABCD_DEAD_CDEF_BEEF),
+            state: seed.wrapping_add(0xDEAD_BEEF_DEAD_BEEF),
         }
     }
 
     /// Read a byte from the randomizer.
+    #[allow(clippy::cast_possible_truncation)]
     pub fn read_u8(&mut self) -> u8 {
         self.state = self
             .state
-            .wrapping_mul(6_834_153_474_237_148_059)
+            .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1);
-        u8::try_from(
-            self.state
-                .wrapping_mul(1_234_764_123_323_543_233)
-                .rotate_right(2)
-                ^ 0xF12A_0605_1992,
-        )
-        .unwrap()
+        (self
+            .state
+            .wrapping_mul(1_152_921_504_735_157_271)
+            .rotate_right(2)
+            ^ 0xFAB0_0105_C0DE) as u8
     }
 
     /// Write a byte into the randomizer.
