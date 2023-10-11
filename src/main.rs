@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_lines)]
 
 mod coin;
+mod mine;
 
 use std::borrow::BorrowMut;
 use std::io::{stdin, stdout, StdoutLock, Write};
@@ -9,7 +10,7 @@ use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::{IntoRawMode, RawTerminal};
 
-const GAMES: &[&str; 3] = &["coin game", "empty", "empty"];
+const GAMES: &[&str; 3] = &["coin game", "mine sweeper", "empty"];
 
 fn main() {
     let stdin = stdin();
@@ -42,7 +43,10 @@ fn main() {
                     coin::coin_game(&mut stdin_lock, &mut stdout);
                     break;
                 }
-                "empty" => break,
+                "mine sweeper" => {
+                    mine::mine_sweeper(&mut stdin_lock, &mut stdout);
+                    break;
+                }
                 _ => (),
             },
             Key::Char('q') => break,
