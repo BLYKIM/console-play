@@ -1,16 +1,22 @@
 #![allow(clippy::too_many_lines)]
 
 mod coin;
+mod graphics;
 mod mine;
+mod randomizer;
+mod snake;
 
-use std::borrow::BorrowMut;
-use std::io::{stdin, stdout, StdoutLock, Write};
-use termion::cursor::DetectCursorPos;
-use termion::event::Key;
-use termion::input::TermRead;
-use termion::raw::{IntoRawMode, RawTerminal};
+use graphics::{
+    clear,
+    cursor::{self, DetectCursorPos},
+    raw::{IntoRawMode, RawTerminal},
+};
+use std::{
+    borrow::BorrowMut,
+    io::{stdin, stdout, Read, StdoutLock, Write},
+};
 
-const GAMES: &[&str; 3] = &["coin game", "mine sweeper", "empty"];
+const GAMES: &[&str; 4] = &["coin game", "mine sweeper", "snake", "empty"];
 
 fn main() {
     let stdin = stdin();
@@ -26,19 +32,19 @@ fn main() {
 
     show_list(&mut stdout, selected);
 
-    for c in stdin_lock.borrow_mut().keys() {
+    for c in stdin_lock.borrow_mut().bytes() {
         match c.unwrap() {
-            Key::Up => {
+            b'w' => {
                 if selected > 0 {
                     selected = selected.saturating_sub(1);
                 }
             }
-            Key::Down => {
+            b's' => {
                 if selected < GAMES.len() - 1 {
                     selected += 1;
                 }
             }
-            Key::Char('\n') => match GAMES[selected] {
+            b' ' => match GAMES[selected] {
                 "coin game" => {
                     coin::coin_game(&mut stdin_lock, &mut stdout);
                     break;
@@ -47,9 +53,13 @@ fn main() {
                     mine::mine_sweeper(&mut stdin_lock, &mut stdout);
                     break;
                 }
+                "snake" => {
+                    snake::snake_game();
+                    break;
+                }
                 _ => (),
             },
-            Key::Char('q') => break,
+            b'q' => break,
             _ => (),
         }
 
@@ -58,17 +68,11 @@ fn main() {
         stdout.flush().unwrap();
     }
 
-    write!(stdout, "{}", termion::cursor::Show).unwrap();
+    write!(stdout, "{}", cursor::Show).unwrap();
 }
 
 fn show_list(stdout: &mut RawTerminal<StdoutLock>, selected: usize) {
-    write!(
-        stdout,
-        "{}{}",
-        termion::clear::All,
-        termion::cursor::Goto(1, 1)
-    )
-    .unwrap();
+    write!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
 
     for (i, game) in GAMES.iter().enumerate() {
         if i == selected {
@@ -77,6 +81,6 @@ fn show_list(stdout: &mut RawTerminal<StdoutLock>, selected: usize) {
             writeln!(stdout, "  {game}").unwrap();
         }
         let (_, y) = stdout.cursor_pos().unwrap();
-        write!(stdout, "{}", termion::cursor::Goto(1, y + 1)).unwrap();
+        write!(stdout, "{}", cursor::Goto(1, y + 1)).unwrap();
     }
 }

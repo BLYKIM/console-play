@@ -1,9 +1,9 @@
+use crate::graphics::{clear, cursor, raw::RawTerminal, BORDER, COIN, PLAYER};
 use rand::Rng;
-use std::io::{Read, StdoutLock, Write};
-use std::time;
-use termion::event::Key;
-use termion::input::TermRead;
-use termion::raw::RawTerminal;
+use std::{
+    io::{Read, StdoutLock, Write},
+    time,
+};
 
 const MANUAL_POS: u16 = 23;
 const PLAY_TIME: u64 = 60;
@@ -22,9 +22,9 @@ pub fn coin_game<R: Read>(stdin: &mut R, stdout: &mut RawTerminal<StdoutLock>) {
     write!(
         stdout,
         "{}{}q to exit. Use arrow keys to move the character.{}",
-        termion::clear::All,
-        termion::cursor::Goto(MANUAL_POS, MAIN_POINT),
-        termion::cursor::Hide
+        clear::All,
+        cursor::Goto(MANUAL_POS, MAIN_POINT),
+        cursor::Hide
     )
     .unwrap();
 
@@ -50,7 +50,7 @@ pub fn coin_game<R: Read>(stdin: &mut R, stdout: &mut RawTerminal<StdoutLock>) {
     stdout.flush().unwrap();
 
     // move character
-    for c in stdin.keys() {
+    for c in stdin.bytes() {
         if time_exceeded(start_time, PLAY_TIME) {
             break;
         }
@@ -75,23 +75,23 @@ pub fn coin_game<R: Read>(stdin: &mut R, stdout: &mut RawTerminal<StdoutLock>) {
         }
 
         match c.unwrap() {
-            Key::Char('q') => break,
-            Key::Left => {
+            b'q' => break,
+            b'a' => {
                 if player.x > MAIN_POINT {
                     player.x -= 1;
                 }
             }
-            Key::Right => {
+            b'd' => {
                 if player.x < SIZE {
                     player.x += 1;
                 }
             }
-            Key::Up => {
+            b'w' => {
                 if player.y > MAIN_POINT {
                     player.y -= 1;
                 }
             }
-            Key::Down => {
+            b's' => {
                 if player.y < SIZE {
                     player.y += 1;
                 }
@@ -113,7 +113,7 @@ pub fn coin_game<R: Read>(stdin: &mut R, stdout: &mut RawTerminal<StdoutLock>) {
         write!(
             stdout,
             "{}Score: {}",
-            termion::cursor::Goto(MANUAL_POS, MAIN_POINT + 3),
+            cursor::Goto(MANUAL_POS, MAIN_POINT + 3),
             score
         )
         .unwrap();
@@ -121,32 +121,29 @@ pub fn coin_game<R: Read>(stdin: &mut R, stdout: &mut RawTerminal<StdoutLock>) {
         stdout.flush().unwrap();
     }
 
-    write!(
-        stdout,
-        "{}Score: {}{}",
-        termion::clear::All,
-        score,
-        termion::cursor::Show
-    )
-    .unwrap();
+    write!(stdout, "{}Score: {}{}", clear::All, score, cursor::Show).unwrap();
 }
 
 fn draw_border(stdout: &mut RawTerminal<StdoutLock>) {
     for i in (MAIN_POINT - 1)..(SIZE + 2) {
         write!(
             stdout,
-            "{}#{}#",
-            termion::cursor::Goto(i, MAIN_POINT - 1),
-            termion::cursor::Goto(i, SIZE + 1)
+            "{}{}{}{}",
+            cursor::Goto(i, MAIN_POINT - 1),
+            BORDER,
+            cursor::Goto(i, SIZE + 1),
+            BORDER
         )
         .unwrap();
 
         if i < SIZE {
             write!(
                 stdout,
-                "{}#{}#",
-                termion::cursor::Goto(MAIN_POINT - 1, i + 1),
-                termion::cursor::Goto(SIZE + 1, i + 1)
+                "{}{}{}{}",
+                cursor::Goto(MAIN_POINT - 1, i + 1),
+                BORDER,
+                cursor::Goto(SIZE + 1, i + 1),
+                BORDER
             )
             .unwrap();
         }
@@ -154,22 +151,22 @@ fn draw_border(stdout: &mut RawTerminal<StdoutLock>) {
 }
 
 fn draw_coin(stdout: &mut RawTerminal<StdoutLock>, coin: &Position) {
-    write!(stdout, "{}o", termion::cursor::Goto(coin.x, coin.y)).unwrap();
+    write!(stdout, "{}{}", cursor::Goto(coin.x, coin.y), COIN).unwrap();
 }
 
 /// Clear the current coin
 fn clear_coin(stdout: &mut RawTerminal<StdoutLock>, coin: &Position) {
-    write!(stdout, "{} ", termion::cursor::Goto(coin.x, coin.y)).unwrap();
+    write!(stdout, "{} ", cursor::Goto(coin.x, coin.y)).unwrap();
 }
 
 /// Clear the current character
 fn clear_player(stdout: &mut RawTerminal<StdoutLock>, player: &Position) {
-    write!(stdout, "{} ", termion::cursor::Goto(player.x, player.y)).unwrap();
+    write!(stdout, "{} ", cursor::Goto(player.x, player.y)).unwrap();
 }
 
 /// Write the '&' character
 fn draw_player(stdout: &mut RawTerminal<StdoutLock>, player: &Position) {
-    write!(stdout, "{}&", termion::cursor::Goto(player.x, player.y)).unwrap();
+    write!(stdout, "{}{}", cursor::Goto(player.x, player.y), PLAYER).unwrap();
 }
 
 fn time_exceeded(start_time: time::Instant, limit: u64) -> bool {

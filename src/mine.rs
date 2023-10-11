@@ -1,9 +1,13 @@
 #![allow(clippy::unused_io_amount, clippy::unused_self)]
 
+use crate::{
+    graphics::{
+        clear, color, cursor, event::Key, input::TermRead, raw::RawTerminal, style, BORDER,
+        CONCEALED, FLAGGED, MINE,
+    },
+    randomizer::Randomizer,
+};
 use std::io::{Read, StdoutLock, Write};
-use termion::event::Key;
-use termion::input::TermRead;
-use termion::raw::RawTerminal;
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -12,46 +16,6 @@ struct Cell {
     revealed: bool,
     observed: bool,
     flagged: bool,
-}
-
-const MINE: &str = "*";
-const FLAGGED: &str = "F";
-const CONCEALED: &str = "▒";
-const BORDER: &str = "#";
-
-struct Randomizer {
-    state: u64,
-}
-
-impl Randomizer {
-    /// Create a new randomizer from a seed.
-    pub fn new(seed: u64) -> Randomizer {
-        Randomizer {
-            state: seed.wrapping_add(0xDEAD_BEEF_DEAD_BEEF),
-        }
-    }
-
-    /// Read a byte from the randomizer.
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn read_u8(&mut self) -> u8 {
-        self.state = self
-            .state
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1);
-        (self
-            .state
-            .wrapping_mul(1_152_921_504_735_157_271)
-            .rotate_right(2)
-            ^ 0xFAB0_0105_C0DE) as u8
-    }
-
-    /// Write a byte into the randomizer.
-    ///
-    /// This is used for collecting entropy to the randomizer.
-    pub fn write_u8(&mut self, b: u8) {
-        self.state ^= u64::try_from(b).unwrap();
-        self.read_u8();
-    }
 }
 
 struct MineSweeper<R, W: Write> {
@@ -67,14 +31,14 @@ struct MineSweeper<R, W: Write> {
 
 #[allow(clippy::module_name_repetitions)]
 pub fn mine_sweeper<R: Read>(stdin: &mut R, stdout: &mut RawTerminal<StdoutLock>) {
-    write!(stdout, "{}", termion::clear::All).unwrap();
+    write!(stdout, "{}", clear::All).unwrap();
     // init
     write!(
         stdout,
-        "{}{}q to exit. Use arrow keys to move and space to select.{}",
-        termion::clear::All,
-        termion::cursor::Goto(24, 2),
-        termion::cursor::Hide
+        "{}{}q to exit. Use arrow keys to move and 'f' to flag, 'space' to select.{}",
+        clear::All,
+        cursor::Goto(24, 2),
+        cursor::Hide
     )
     .unwrap();
 
@@ -111,9 +75,9 @@ impl<R, W: Write> Drop for MineSweeper<R, W> {
         write!(
             self.stdout,
             "{}{}{}",
-            termion::clear::All,
-            termion::style::Reset,
-            termion::cursor::Goto(1, 1)
+            clear::All,
+            style::Reset,
+            cursor::Goto(1, 1)
         )
         .unwrap();
     }
@@ -154,10 +118,10 @@ impl<R: Iterator<Item = Result<Key, std::io::Error>>, W: Write> MineSweeper<R, W
             }
 
             match b {
-                Key::Left => self.x = self.move_left(self.x),
-                Key::Right => self.x = self.move_right(self.x),
-                Key::Up => self.y = self.move_up(self.y),
-                Key::Down => self.y = self.move_down(self.y),
+                Key::Char('a') | Key::Left => self.x = self.move_left(self.x),
+                Key::Char('d') | Key::Right => self.x = self.move_right(self.x),
+                Key::Char('w') | Key::Up => self.y = self.move_up(self.y),
+                Key::Char('s') | Key::Down => self.y = self.move_down(self.y),
                 Key::Char(' ') => {
                     let (x, y) = (self.x, self.y);
 
@@ -174,11 +138,11 @@ impl<R: Iterator<Item = Result<Key, std::io::Error>>, W: Write> MineSweeper<R, W
                         write!(
                             self.stdout,
                             "{}{}{}{}{}",
-                            termion::cursor::Goto(x + 2, y + 2),
-                            termion::color::Bg(termion::color::Red),
-                            termion::color::Fg(termion::color::Black),
+                            cursor::Goto(x + 2, y + 2),
+                            color::Bg(color::Red),
+                            color::Fg(color::Black),
                             MINE,
-                            termion::style::Reset
+                            style::Reset
                         )
                         .unwrap();
                         self.game_over();
@@ -200,13 +164,8 @@ impl<R: Iterator<Item = Result<Key, std::io::Error>>, W: Write> MineSweeper<R, W
                 _ => {}
             }
 
-            write!(
-                self.stdout,
-                "{}",
-                termion::cursor::Goto(self.x + 2, self.y + 2),
-            )
-            .unwrap();
-            write!(self.stdout, "{}", termion::cursor::Show).unwrap();
+            write!(self.stdout, "{}", cursor::Goto(self.x + 2, self.y + 2),).unwrap();
+            write!(self.stdout, "{}", cursor::Show).unwrap();
             self.stdout.flush().unwrap();
         }
     }
@@ -232,7 +191,7 @@ impl<R: Iterator<Item = Result<Key, std::io::Error>>, W: Write> MineSweeper<R, W
     }
 
     fn reset(&mut self) {
-        write!(self.stdout, "{}", termion::cursor::Goto(1, 1)).unwrap();
+        write!(self.stdout, "{}", cursor::Goto(1, 1)).unwrap();
 
         // Draw top border
         for _ in 0..(self.width + 2) {
@@ -256,12 +215,7 @@ impl<R: Iterator<Item = Result<Key, std::io::Error>>, W: Write> MineSweeper<R, W
             self.stdout.write(BORDER.as_bytes()).unwrap();
         }
 
-        write!(
-            self.stdout,
-            "{}",
-            termion::cursor::Goto(self.x + 2, self.y + 2),
-        )
-        .unwrap();
+        write!(self.stdout, "{}", cursor::Goto(self.x + 2, self.y + 2),).unwrap();
 
         self.stdout.flush().unwrap();
 
@@ -292,7 +246,7 @@ impl<R: Iterator<Item = Result<Key, std::io::Error>>, W: Write> MineSweeper<R, W
 
         self.get_mut(x, y).revealed = true;
 
-        write!(self.stdout, "{}", termion::cursor::Goto(x + 2, y + 2)).unwrap();
+        write!(self.stdout, "{}", cursor::Goto(x + 2, y + 2)).unwrap();
 
         if v == 0 {
             // If the cell is free, simply put a space on the position
@@ -311,18 +265,18 @@ impl<R: Iterator<Item = Result<Key, std::io::Error>>, W: Write> MineSweeper<R, W
 
     fn print_score(&mut self) {
         let height = self.height();
-        write!(self.stdout, "{}", termion::cursor::Goto(24, height + 2)).unwrap();
+        write!(self.stdout, "{}", cursor::Goto(24, height + 2)).unwrap();
         self.stdout
             .write(self.score.to_string().as_bytes())
             .unwrap();
     }
 
     fn reveal_all(&mut self) {
-        write!(self.stdout, "{}", termion::cursor::Goto(1, 1)).unwrap();
+        write!(self.stdout, "{}", cursor::Goto(1, 1)).unwrap();
 
         for y in 0..self.height() {
             for x in 0..self.width {
-                write!(self.stdout, "{}", termion::cursor::Goto(x + 2, y + 2)).unwrap();
+                write!(self.stdout, "{}", cursor::Goto(x + 2, y + 2)).unwrap();
                 if self.get(x, y).mine {
                     self.stdout.write(MINE.as_bytes()).unwrap();
                 }
@@ -331,7 +285,7 @@ impl<R: Iterator<Item = Result<Key, std::io::Error>>, W: Write> MineSweeper<R, W
     }
 
     fn game_over(&mut self) {
-        write!(self.stdout, "{}", termion::cursor::Goto(1, 1)).unwrap();
+        write!(self.stdout, "{}", cursor::Goto(1, 1)).unwrap();
 
         self.stdout.write(b"Game Over. press q to exit.").unwrap();
         self.stdout.flush().unwrap();
