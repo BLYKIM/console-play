@@ -3,6 +3,7 @@
 - Get coin
 - Mine Sweeper
 - Snake
+- Coffee Race
 
 ## Run
 

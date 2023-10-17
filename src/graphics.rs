@@ -9,6 +9,8 @@ pub const COIN: &str = "o";
 pub const VERTICAL_SNAKE_BODY: &str = "║";
 pub const HORIZONTAL_SNAKE_BODY: &str = "═";
 pub const SNAKE_HEAD: &str = "@";
+pub const RACER_TYPE: [char; 10] = ['🐥', '🐶', '🐷', '@', '😃', '💩', '🐌', '🦀', '🌜', '👺'];
 
 pub const GAME_START_PROMPT: &str = "Press 'space' to start";
-pub const GAME_OVER: &str = "Game Over. Press 'r' to reset, Press 'q' to exit";
+pub const RACE_NUMBER_PROMPT: &str = "Enter the number of players. [2 - 9]";
+pub const GAME_OVER: &str = "Game Over. Press 'q' to exit";

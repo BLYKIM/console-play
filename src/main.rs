@@ -3,6 +3,7 @@
 mod coin;
 mod graphics;
 mod mine;
+mod race;
 mod randomizer;
 mod snake;
 
@@ -16,7 +17,7 @@ use std::{
     io::{stdin, stdout, Read, StdoutLock, Write},
 };
 
-const GAMES: &[&str; 4] = &["coin game", "mine sweeper", "snake", "empty"];
+const GAMES: &[&str; 5] = &["coin game", "mine sweeper", "snake", "race", "empty"];
 
 fn main() {
     let stdin = stdin();
@@ -24,7 +25,7 @@ fn main() {
 
     let mut stdout = stdout().lock().into_raw_mode().unwrap();
 
-    write!(stdout, "{}", termion::cursor::Hide).unwrap();
+    write!(stdout, "{}", cursor::Hide).unwrap();
 
     stdout.flush().unwrap();
 
@@ -55,6 +56,10 @@ fn main() {
                 }
                 "snake" => {
                     snake::snake_game();
+                    break;
+                }
+                "race" => {
+                    race::coffee_race(&mut stdin_lock, &mut stdout);
                     break;
                 }
                 _ => (),
