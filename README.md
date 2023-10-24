@@ -10,3 +10,4 @@
 - 'w', 'a', 's', 'd' to move.
 - 'space' to select.
 - 'q' to exit.
+- 'f' to flag mine.
