@@ -17,6 +17,8 @@ use std::{
     io::{stdin, stdout, Read, StdoutLock, Write},
 };
 
+use crate::graphics::MAIN_INTRO;
+
 const GAMES: &[&str; 5] = &["coin game", "mine sweeper", "snake", "race", "empty"];
 
 fn main() {
@@ -78,7 +80,8 @@ fn main() {
 
 fn show_list(stdout: &mut RawTerminal<StdoutLock>, selected: usize) {
     write!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
-
+    write!(stdout, "{}{}", cursor::Goto(10, 3), MAIN_INTRO).unwrap();
+    write!(stdout, "{}", cursor::Goto(1, 10)).unwrap();
     for (i, game) in GAMES.iter().enumerate() {
         if i == selected {
             writeln!(stdout, "> {game}").unwrap();

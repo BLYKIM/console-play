@@ -1,5 +1,10 @@
 pub use termion::{async_stdin, clear, color, cursor, event, input, raw, style};
 
+pub const MAIN_INTRO: &str = "
+C O N S O L E - P L A Y\n\r
+            B L Y\n\r
+Select Game with 'w' 's' then press 'space'\n\r
+";
 pub const MINE: &str = "*";
 pub const FLAGGED: &str = "F";
 pub const CONCEALED: &str = "▒";

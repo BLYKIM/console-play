@@ -36,7 +36,7 @@ impl Racer {
 
     fn run(&mut self) {
         let mut rng = rand::thread_rng();
-        self.speed = rng.gen_range(1..5);
+        self.speed = rng.gen_range(1..8);
         self.pos += self.speed;
     }
 }
@@ -214,7 +214,7 @@ impl<R: Read, W: Write> Game<R, W> {
         write!(
             self.stdout,
             "{}Ranking: {}, Press 'q' to exit.",
-            cursor::Goto(20, 10),
+            cursor::Goto(20, 15),
             winners
         )
         .unwrap();
@@ -229,9 +229,7 @@ impl<R: Read, W: Write> Game<R, W> {
         loop {
             // Repeatedly read a single byte.
             let mut buf = [0];
-            self.stdin.read(&mut buf).unwrap();
-
-            if buf[0] == b'q' {
+            if self.stdin.read(&mut buf).is_ok() && buf[0] == b'q' {
                 return false;
             }
         }
@@ -266,5 +264,9 @@ fn init<W: Write, R: Read>(mut stdout: W, stdin: R, width: usize) {
 
 #[allow(clippy::module_name_repetitions)]
 pub fn coffee_race<R: Read>(stdin: &mut R, stdout: &mut RawTerminal<StdoutLock>) {
-    init(stdout, stdin, 200);
+    let width = match termion::terminal_size() {
+        Ok((w, _)) => w - 5,
+        Err(_) => 200,
+    } as usize;
+    init(stdout, stdin, width);
 }
